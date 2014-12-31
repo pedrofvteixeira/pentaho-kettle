@@ -101,6 +101,11 @@ import org.pentaho.di.www.StartJobServlet;
 import org.pentaho.di.www.WebResult;
 import org.pentaho.metastore.api.IMetaStore;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
  * This class executes a job as defined by a JobMeta object.
  * <p>
@@ -405,6 +410,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
    * Threads main loop: called by Thread.start();
    */
   public void run() {
+
+    ExecutorService heartbeat = null;
+
     try {
       stopped = new AtomicBoolean( false );
       finished = new AtomicBoolean( false );
@@ -421,6 +429,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
       // Run the job
       //
       fireJobStartListeners();
+
+      heartbeat = startHeartbeat( 3 /* seconds */ ); // TODO externalize heartbeat interval
+
       result = execute();
     } catch ( Throwable je ) {
       log.logError( BaseMessages.getString( PKG, "Job.Log.ErrorExecJob", je.getMessage() ), je );
@@ -441,6 +452,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
       stopped.set( false );
     } finally {
       try {
+
+        shutdownHeartbeat( heartbeat );
+
         ExtensionPointHandler.callExtensionPoint( log, KettleExtensionPoint.JobFinish.id, this );
 
         fireJobFinishListeners();
@@ -2384,5 +2398,39 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
   public void setStartJobEntryResult( Result startJobEntryResult ) {
     this.startJobEntryResult = startJobEntryResult;
+  }
+
+  protected ExecutorService startHeartbeat( long intervalInSeconds ) {
+
+    ScheduledExecutorService heartbeat = Executors.newSingleThreadScheduledExecutor();
+
+    heartbeat.scheduleAtFixedRate( new Runnable() {
+      public void run() {
+        try {
+
+          log.logDebug( "Triggering job heartbeat signal for " + jobMeta.getName() );
+          ExtensionPointHandler.callExtensionPoint( log, KettleExtensionPoint.JobHeartbeat.id, this );
+
+        } catch ( KettleException e ) {
+          log.logError( e.getMessage(), e );
+        }
+      }
+    }, intervalInSeconds /* initialDelay */, intervalInSeconds /* interval delay */, TimeUnit.SECONDS );
+
+    return heartbeat;
+  }
+
+  protected void shutdownHeartbeat( ExecutorService heartbeat ){
+
+    if( heartbeat != null ) {
+
+      try {
+        heartbeat.shutdownNow(); // prevents waiting tasks from starting and attempts to stop currently executing ones
+        heartbeat = null;
+
+      } catch( Throwable t ) {
+        /* do nothing */
+      }
+    }
   }
 }

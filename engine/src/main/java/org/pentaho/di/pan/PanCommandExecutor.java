@@ -22,6 +22,7 @@
 
 package org.pentaho.di.pan;
 
+import org.apache.commons.lang.StringUtils;
 import org.pentaho.di.base.AbstractBaseCommandExecutor;
 import org.pentaho.di.base.CommandExecutorCodes;
 import org.pentaho.di.core.Const;
@@ -44,6 +45,7 @@ import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.i18n.BaseMessages;
 import org.w3c.dom.Document;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Calendar;
 import java.util.Date;
@@ -64,12 +66,6 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
                       String initialDir, String listRepos, String safemode, String metrics, String listParams,
                       NamedParams params, String[] arguments ) throws Throwable {
 
-    getLog().logMinimal( BaseMessages.getString( getPkgClazz(), "Pan.Log.StartingToRun" ) );
-
-    Date start = Calendar.getInstance().getTime(); // capture execution start time
-
-    logDebug( "Pan.Log.AllocatteNewTrans" );
-
     Trans trans = null;
 
     // In case we use a repository...
@@ -77,72 +73,111 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
 
     try {
 
-      if ( getMetaStore() == null ) {
-        setMetaStore( createDefaultMetastore() );
-      }
+      getLog().logMinimal( BaseMessages.getString( getPkgClazz(), "Pan.Log.StartingToRun" ) );
 
-      logDebug( "Pan.Log.StartingToLookOptions" );
+      Date start = Calendar.getInstance().getTime(); // capture execution start time
 
-      // Read kettle transformation specified
-      if ( !Utils.isEmpty( repoName ) || !Utils.isEmpty( filename ) || !Utils.isEmpty( jarFile ) ) {
+      logDebug( "Pan.Log.AllocatteNewTrans" );
 
-        logDebug( "Pan.Log.ParsingCommandline" );
+      try {
 
-        if ( !Utils.isEmpty( repoName ) && !isEnabled( noRepo ) ) {
+        if ( getMetaStore() == null ) {
+          setMetaStore( createDefaultMetastore() );
+        }
 
-          /**
-           * if set, _trust_user_ needs to be considered. See pur-plugin's:
-           *
-           * @link https://github.com/pentaho/pentaho-kettle/blob/8.0.0.0-R/plugins/pur/core/src/main/java/org/pentaho/di/repository/pur/PurRepositoryConnector.java#L97-L101
-           * @link https://github.com/pentaho/pentaho-kettle/blob/8.0.0.0-R/plugins/pur/core/src/main/java/org/pentaho/di/repository/pur/WebServiceManager.java#L130-L133
-           */
-          if ( isEnabled( trustUser ) ) {
-            System.setProperty( "pentaho.repository.client.attemptTrust", YES );
+        logDebug( "Pan.Log.StartingToLookOptions" );
+
+        // Read kettle transformation specified
+        if ( !Utils.isEmpty( repoName ) || !Utils.isEmpty( filename ) || !Utils.isEmpty( jarFile ) ) {
+
+          logDebug( "Pan.Log.ParsingCommandline" );
+
+          if ( !Utils.isEmpty( repoName ) && !isEnabled( noRepo ) ) {
+
+            /**
+             * if set, _trust_user_ needs to be considered. See pur-plugin's:
+             *
+             * @link https://github.com/pentaho/pentaho-kettle/blob/8.0.0.0-R/plugins/pur/core/src/main/java/org/pentaho/di/repository/pur/PurRepositoryConnector.java#L97-L101
+             * @link https://github.com/pentaho/pentaho-kettle/blob/8.0.0.0-R/plugins/pur/core/src/main/java/org/pentaho/di/repository/pur/WebServiceManager.java#L130-L133
+             */
+            if ( isEnabled( trustUser ) ) {
+              System.setProperty( "pentaho.repository.client.attemptTrust", YES );
+            }
+
+            // In case we use a repository...
+            // some commands are to load a Trans from the repo; others are merely to print some repo-related information
+            RepositoryMeta repositoryMeta = loadRepositoryConnection( repoName, "Pan.Log.LoadingAvailableRep", "Pan.Error.NoRepsDefined", "Pan.Log.FindingRep" );
+
+            repository = establishRepositoryConnection( repositoryMeta, username, password, RepositoryOperation.EXECUTE_TRANSFORMATION );
+
+            trans = executeRepositoryBasedCommand( repository, repositoryMeta, dirName, transName, listTrans, listDirs, exportRepo );
           }
 
-          // In case we use a repository...
-          // some commands are to load a Trans from the repo; others are merely to print some repo-related information
-          RepositoryMeta repositoryMeta = loadRepositoryConnection( repoName, "Pan.Log.LoadingAvailableRep", "Pan.Error.NoRepsDefined", "Pan.Log.FindingRep" );
 
-          repository = establishRepositoryConnection( repositoryMeta, username, password, RepositoryOperation.EXECUTE_TRANSFORMATION );
+          // Try to load the transformation from file, even if it failed to load from the repository
+          // You could implement some fail-over mechanism this way.
+          if ( trans == null ) {
+            trans = executeFilesystemBasedCommand( initialDir, filename, jarFile );
+          }
 
-          trans = executeRepositoryBasedCommand( repository, repositoryMeta, dirName, transName, listTrans, listDirs, exportRepo );
         }
 
-
-        // Try to load the transformation from file, even if it failed to load from the repository
-        // You could implement some fail-over mechanism this way.
-        if ( trans == null ) {
-          trans = executeFilesystemBasedCommand( initialDir, filename, jarFile );
+        if ( isEnabled( listRepos ) ) {
+          printRepositories( loadRepositoryInfo( "Pan.Log.LoadingAvailableRep", "Pan.Error.NoRepsDefined" ) ); // list the repositories placed at repositories.xml
         }
 
+      } catch ( Exception e ) {
+
+        trans = null;
+
+        System.out.println( BaseMessages.getString( getPkgClazz(), "Pan.Error.ProcessStopError", e.getMessage() ) );
+        e.printStackTrace();
+        if ( repository != null ) {
+          repository.disconnect();
+        }
+        return CommandExecutorCodes.Pan.ERRORS_DURING_PROCESSING.getCode();
       }
 
-      if ( isEnabled( listRepos ) ) {
-        printRepositories( loadRepositoryInfo( "Pan.Log.LoadingAvailableRep", "Pan.Error.NoRepsDefined" ) ); // list the repositories placed at repositories.xml
+      if ( trans == null ) {
+
+        if ( !isEnabled( listTrans ) && !isEnabled( listDirs ) && !isEnabled( listRepos ) && Utils.isEmpty( exportRepo ) ) {
+
+          System.out.println( BaseMessages.getString( getPkgClazz(), "Pan.Error.CanNotLoadTrans" ) );
+          return CommandExecutorCodes.Pan.COULD_NOT_LOAD_TRANS.getCode();
+        } else {
+          return CommandExecutorCodes.Pan.SUCCESS.getCode();
+        }
       }
 
-    } catch ( Exception e ) {
+      return execute( trans, safemode, metrics, listParams, params, arguments, start );
 
-      trans = null;
-
-      System.out.println( BaseMessages.getString( getPkgClazz(), "Pan.Error.ProcessStopError", e.getMessage() ) );
-      e.printStackTrace();
+    } finally {
       if ( repository != null ) {
         repository.disconnect();
       }
-      return CommandExecutorCodes.Pan.ERRORS_DURING_PROCESSING.getCode();
+      if ( isEnabled( trustUser ) ) {
+        System.clearProperty( "pentaho.repository.client.attemptTrust" ); // we set it, now we sanitize it
+      }
+    }
+  }
+
+  public int execute( String transXml, String safemode, String metrics, String listParams, NamedParams params, String[] arguments ) throws Throwable {
+
+    if ( StringUtils.isEmpty( transXml ) ) {
+      getLog().logError( BaseMessages.getString( getPkgClazz(), "Pan.Error.CanNotLoadTrans" ) );
+      return CommandExecutorCodes.Pan.COULD_NOT_LOAD_TRANS.getCode();
     }
 
+    TransMeta transMeta = new TransMeta( new ByteArrayInputStream( transXml.getBytes() ), null, true, null, null );
+
+    return execute( new Trans( transMeta ), safemode, metrics, listParams, params, arguments, Calendar.getInstance().getTime() );
+  }
+
+  public int execute( Trans trans, String safemode, String metrics, String listParams, NamedParams params, String[] arguments, Date start ) throws Throwable {
+
     if ( trans == null ) {
-
-      if ( !isEnabled( listTrans ) && !isEnabled( listDirs ) && !isEnabled( listRepos ) && Utils.isEmpty( exportRepo ) ) {
-
-        System.out.println( BaseMessages.getString( getPkgClazz(), "Pan.Error.CanNotLoadTrans" ) );
-        return CommandExecutorCodes.Pan.COULD_NOT_LOAD_TRANS.getCode();
-      } else {
-        return CommandExecutorCodes.Pan.SUCCESS.getCode();
-      }
+      getLog().logError( BaseMessages.getString( getPkgClazz(), "Pan.Error.CanNotLoadTrans" ) );
+      return CommandExecutorCodes.Pan.COULD_NOT_LOAD_TRANS.getCode();
     }
 
     try {
@@ -218,14 +253,6 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
       getLog().logError( BaseMessages.getString( getPkgClazz(), "Pan.Log.UnexpectedErrorOccurred", "" + ke.getMessage() ) );
 
       return CommandExecutorCodes.Pan.UNEXPECTED_ERROR.getCode();
-
-    } finally {
-      if ( repository != null ) {
-        repository.disconnect();
-      }
-      if ( isEnabled( trustUser ) ) {
-        System.clearProperty( "pentaho.repository.client.attemptTrust" ); // we set it, now we sanitize it
-      }
     }
   }
 

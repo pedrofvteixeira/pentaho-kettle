@@ -35,7 +35,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.pentaho.di.core.gui.AreaOwner;
 import org.pentaho.di.core.gui.Point;
-import org.pentaho.di.core.gui.SwingGC;
+//import org.pentaho.di.core.gui.SwingGC;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.Job;
@@ -171,6 +171,8 @@ public class GetJobImageServlet extends BaseHttpServlet implements CartePluginIn
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         try {
           ImageIO.write( image, "png", os );
+        } catch ( Throwable t) {
+          /* no-op */
         } finally {
           os.flush();
         }
@@ -190,6 +192,7 @@ public class GetJobImageServlet extends BaseHttpServlet implements CartePluginIn
     Point maximum = jobMeta.getMaximum();
     maximum.multiply( magnification );
 
+    /*
     SwingGC gc = new SwingGC( null, maximum, 32, 0, 0 );
     JobPainter jobPainter =
       new JobPainter(
@@ -201,6 +204,8 @@ public class GetJobImageServlet extends BaseHttpServlet implements CartePluginIn
     BufferedImage image = (BufferedImage) gc.getImage();
 
     return image;
+    */
+    return null;
   }
 
   public String toString() {

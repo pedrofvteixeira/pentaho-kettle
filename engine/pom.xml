@@ -865,6 +865,11 @@
       <groupId>org.codehaus.woodstox</groupId>
       <artifactId>wstx-asl</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.reactivex.rxjava2</groupId>
+      <artifactId>rxjava</artifactId>
+      <version>${rxjava.version}</version>
+    </dependency>
 
     <!-- Test dependencies -->
     <dependency>
@@ -894,12 +899,6 @@
       <groupId>org.powermock</groupId>
       <artifactId>powermock-api-mockito</artifactId>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>io.reactivex.rxjava2</groupId>
-      <artifactId>rxjava</artifactId>
-      <version>${rxjava.version}</version>
     </dependency>
     <dependency>
       <groupId>oro</groupId>

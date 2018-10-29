@@ -275,7 +275,9 @@
       <modules>
         <module>engine-ext</module>
         <module>core</module>
+        <module>core-ui</module>
         <module>engine</module>
+        <module>engine-ui</module>
         <module>dbdialog</module>
         <module>ui</module>
       </modules>

@@ -36,12 +36,12 @@
     <!-- Kettle dependencies -->
     <dependency>
       <groupId>pentaho-kettle</groupId>
-      <artifactId>kettle-core</artifactId>
+      <artifactId>kettle-core-ui</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>pentaho-kettle</groupId>
-      <artifactId>kettle-engine</artifactId>
+      <artifactId>kettle-engine-ui</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.pentaho.di</groupId>
+        <artifactId>pdi-core-poc</artifactId>
+        <version>9.0.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>pdi-core-poc-feature-ce</artifactId>
+    <name>PDI Core Feature POC Community Edition</name>
+
+    <packaging>feature</packaging>
+
+    <properties>
+        <pentaho-launcher.version>9.0.0.0-SNAPSHOT</pentaho-launcher.version>
+        <oss-licenses.version>9.0.0.0-SNAPSHOT</oss-licenses.version>
+        <pentaho-hadoop-shims-api.version>9.0.0.0-SNAPSHOT</pentaho-hadoop-shims-api.version>
+        <commons-configuration.version>1.9</commons-configuration.version>
+        <apache-log4j-extras>1.2.17</apache-log4j-extras>
+        <geronimo-servlet_3.0_spec.version>1.0</geronimo-servlet_3.0_spec.version>
+        <janino.version>3.0.8</janino.version>
+
+        <commons-vfs2.version>2.2</commons-vfs2.version>
+        <commons-compress.version>1.4.1</commons-compress.version>
+        <janino.version>3.0.8</janino.version>
+        <postgresql.version>42.1.1</postgresql.version>
+
+        <jsr311-api.version>1.1.1</jsr311-api.version>
+        <jersey-servlet.version>1.19.1</jersey-servlet.version>
+        <jersey-json.version>1.19.1</jersey-json.version>
+        <jersey-server.version>1.19.1</jersey-server.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Features (should be at the top of the dependency declaration) -->
+
+        <!-- Bundles -->
+
+
+        <!-- ############ -->
+        <!-- PENTAHO DEPS -->
+        <!-- ############ -->
+
+        <!-- kettle-core, kettle-engine, kettle-dbdialog -->
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-engine</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+
+                <!-- jersey-bundle is a mess of a jar: it bundles all of the jersey-* jars,
+                and it has half the web as 'provided dependency' -->
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-bundle</artifactId>
+                </exclusion>
+
+                <!-- we don't want to bring along a specific implementation of a servlet container, which is jetty -->
+                <exclusion>
+                    <groupId>org.eclipse.jetty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-dbdialog</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!--
+            If there's one thing we don't want is to open the 'can of worms' that would be to bring along Eclipse Equinox,
+            which is by itself an implementation if OSGi framework specification
+
+            [INFO] |  +- org.pentaho:commons-xul-swt:jar:9.0.0.0-SNAPSHOT:compile
+            [INFO] |  |  \- org.eclipse:jface:jar:3.3.0-I20070606-0010:compile
+            [INFO] |  |     +- org.eclipse:swt:jar:3.3.0-v3346:compile (version selected from constraint [3.3.0,4.0.0))
+            [INFO] |  |     +- org.eclipse.core:commands:jar:3.3.0-i20070605-0010:compile (version selected from constraint [3.3.0,4.0.0))
+            [INFO] |  |     \- org.eclipse.equinox:common:jar:3.6.200-v20130402-1505:compile (version selected from constraint [3.2.0,4.0.0))
+        -->
+        <dependency>
+          <groupId>org.pentaho</groupId>
+          <artifactId>commons-xul-swt</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse</groupId>
+                    <artifactId>jface</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.pentaho</groupId>
+            <artifactId>pentaho-hadoop-shims-api</artifactId>
+            <version>${pentaho-hadoop-shims-api.version}</version>
+        </dependency>
+
+
+         <!-- replacing jersey-bundle with these 4 -->
+          <dependency>
+              <groupId>javax.ws.rs</groupId>
+              <artifactId>jsr311-api</artifactId>
+              <version>${jsr311-api.version}</version>
+          </dependency>
+
+          <dependency>
+              <groupId>com.sun.jersey</groupId>
+              <artifactId>jersey-servlet</artifactId>
+              <version>${jersey-servlet.version}</version>
+          </dependency>
+
+          <dependency>
+              <groupId>com.sun.jersey</groupId>
+              <artifactId>jersey-json</artifactId>
+              <version>${jersey-json.version}</version>
+          </dependency>
+
+          <dependency>
+              <groupId>com.sun.jersey</groupId>
+              <artifactId>jersey-server</artifactId>
+              <version>${jersey-server.version}</version>
+          </dependency>
+
+
+        <!-- ################ -->
+        <!-- PDI PLUUGIN DEPS -->
+        <!-- ################ -->
+
+        <!-- PDI classic plugin 'kettle5-log4-plugin' needs apache-log4j-extras -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>apache-log4j-extras</artifactId>
+            <version>${apache-log4j-extras}</version>
+        </dependency>
+
+
+        <!-- commons-configuration is used by HadoopConfigurationBootstrap -->
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>${commons-configuration.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Third-party JDBC dependencies -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+
+        <!-- there are plugins expecting this XPath engine to be present in the main classloader -->
+        <dependency>
+            <groupId>jaxen</groupId>
+            <artifactId>jaxen</artifactId>
+        </dependency>
+
+        <!-- there are plugins expecting classes provided by this jar -->
+        <dependency>
+            <groupId>org.apache.geronimo.specs</groupId>
+            <artifactId>geronimo-servlet_3.0_spec</artifactId>
+            <version>${geronimo-servlet_3.0_spec.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <!-- kettle-engine bundles org.postgres jar, which requires javax.transaction.api -->
+        <dependency>
+            <groupId>javax.transaction</groupId>
+            <artifactId>javax.transaction-api</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.enterprise</groupId>
+            <artifactId>cdi-api</artifactId>
+            <version>1.0-SP4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.interceptor</groupId>
+            <artifactId>javax.interceptor-api</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+
+
+
+
+        <!-- ####################W -->
+        <!-- DEPS WITH * EXCLUSION -->
+        <!-- ###################WW -->
+
+        <!-- (sigh) exclusions, exclusions everywhere... -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>commons-compiler</artifactId>
+            <version>${janino.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <version>${janino.version}</version>
+        </dependency>
+
+        <dependency>
+          <groupId>org.postgresql</groupId>
+          <artifactId>postgresql</artifactId>
+          <version>${postgresql.version}</version>
+        </dependency>
+
+
+
+        <!-- Kettle (core) step UserDefinedJavaClass needs janino, which in turn needs apache.ant -->
+        <dependency>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>1.7.1</version>
+        </dependency>
+
+        <!-- vfs (core) kettle step -->
+        <dependency>
+            <groupId>commons-httpclient</groupId>
+            <artifactId>commons-httpclient</artifactId>
+            <version>3.1</version>
+        </dependency>
+
+        <!-- vfs (core) kettle step -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
+
+
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <!-- This profile generates a feature file to deploy in karaf. -->
+            <id>feature-generation</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/src/main/feature</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.karaf.tooling</groupId>
+                        <artifactId>karaf-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.karaf.tooling</groupId>
+                    <artifactId>karaf-maven-plugin</artifactId>
+                    <version>${karaf-maven-plugin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <includeTransitiveDependency>true</includeTransitiveDependency>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.pentaho.di</groupId>
+        <artifactId>pdi-core-poc</artifactId>
+        <version>9.0.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>pdi-core-poc-standalone-ce</artifactId>
+    <name>PDI Core Standalone POC Community Edition</name>
+
+    <packaging>pom</packaging>
+
+
+    <properties>
+        <pentaho-launcher.version>9.0.0.0-SNAPSHOT</pentaho-launcher.version>
+        <oss-licenses.version>9.0.0.0-SNAPSHOT</oss-licenses.version>
+        <pentaho-hadoop-shims-api.version>9.0.0.0-SNAPSHOT</pentaho-hadoop-shims-api.version>
+        <commons-configuration.version>1.9</commons-configuration.version>
+        <apache-log4j-extras>1.2.17</apache-log4j-extras>
+        <geronimo-servlet_3.0_spec.version>1.0</geronimo-servlet_3.0_spec.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- kettle-core, kettle-engine, kettle-dbdialog -->
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-engine</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-dbdialog</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <!-- PDI classic plugin 'kettle5-log4-plugin' needs apache-log4j-extras -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>apache-log4j-extras</artifactId>
+            <version>${apache-log4j-extras}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.pentaho</groupId>
+            <artifactId>pentaho-hadoop-shims-api</artifactId>
+            <version>${pentaho-hadoop-shims-api.version}</version>
+        </dependency>
+
+        <!-- commons-configuration is used by HadoopConfigurationBootstrap -->
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>${commons-configuration.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Third-party JDBC dependencies -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+
+        <!-- there are plugins expecting this XPath engine to be present in the main classloader -->
+        <dependency>
+            <groupId>jaxen</groupId>
+            <artifactId>jaxen</artifactId>
+        </dependency>
+
+        <!-- there are plugins expecting classes provided by this jar -->
+        <dependency>
+            <groupId>org.apache.geronimo.specs</groupId>
+            <artifactId>geronimo-servlet_3.0_spec</artifactId>
+            <version>${geronimo-servlet_3.0_spec.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <!-- Standalone PDI stuff: pan.sh , kitchen.sh, pentaho-launcher, etc..  -->
+        <dependency>
+            <groupId>org.pentaho.di</groupId>
+            <artifactId>pdi-core-poc-static</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-application-launcher</artifactId>
+            <version>${pentaho-launcher.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>oss-licenses</artifactId>
+            <version>${oss-licenses.version}</version>
+            <type>zip</type>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-libs</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeScope>compile</includeScope>
+                            <includeTypes>jar</includeTypes>
+                            <excludeArtifactIds>pentaho-application-launcher</excludeArtifactIds>
+                            <outputDirectory>${assembly.dir}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

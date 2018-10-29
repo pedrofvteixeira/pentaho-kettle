@@ -35,7 +35,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.pentaho.di.core.gui.AreaOwner;
 import org.pentaho.di.core.gui.Point;
-import org.pentaho.di.core.gui.SwingGC;
+//import org.pentaho.di.core.gui.SwingGC;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.trans.Trans;
@@ -169,7 +169,9 @@ public class GetTransImageServlet extends BaseHttpServlet implements CartePlugin
         BufferedImage image = generateTransformationImage( trans.getTransMeta() );
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         try {
-          ImageIO.write( image, "png", os );
+          ImageIO.write(image, "png", os);
+        } catch ( Throwable t) {
+          /* no-op */
         } finally {
           os.flush();
         }
@@ -189,6 +191,7 @@ public class GetTransImageServlet extends BaseHttpServlet implements CartePlugin
     Point maximum = transMeta.getMaximum();
     maximum.multiply( magnification );
 
+    /*
     SwingGC gc = new SwingGC( null, maximum, 32, 0, 0 );
     TransPainter transPainter =
       new TransPainter(
@@ -198,6 +201,8 @@ public class GetTransImageServlet extends BaseHttpServlet implements CartePlugin
     transPainter.buildTransformationImage();
 
     return (BufferedImage) gc.getImage();
+    */
+    return null;
   }
 
   public String toString() {

@@ -61,7 +61,6 @@
                     <groupId>javax.servlet</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
-
                 <!--
                     jersey-bundle is a mess of a jar: it bundles all of the jersey-* jars and many others, and it has half the web as 'provided dependency'.
                     I can replace that franken-jersey-bundle with 4 ( much smaller ) dependencies: jsr311-api, jersey-servlet, jersey-json, jersey-server
@@ -157,14 +156,11 @@
             <artifactId>apache-log4j-extras</artifactId>
             <version>${apache-log4j-extras}</version>
         </dependency>
-
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
             <version>1.2.17</version>
         </dependency>
-
-
 
         <!-- commons-configuration is used by HadoopConfigurationBootstrap -->
         <dependency>
@@ -223,9 +219,6 @@
             <artifactId>javax.interceptor-api</artifactId>
             <version>1.2.2</version>
         </dependency>
-
-
-
 
         <!-- ####################W -->
         <!-- DEPS WITH * EXCLUSION -->
@@ -305,12 +298,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
-
-
-
-
-
     </dependencies>
 
     <profiles>

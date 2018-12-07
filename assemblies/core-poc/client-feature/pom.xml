@@ -62,8 +62,10 @@
                     <artifactId>*</artifactId>
                 </exclusion>
 
-                <!-- jersey-bundle is a mess of a jar: it bundles all of the jersey-* jars,
-                and it has half the web as 'provided dependency' -->
+                <!--
+                    jersey-bundle is a mess of a jar: it bundles all of the jersey-* jars and many others, and it has half the web as 'provided dependency'.
+                    I can replace that franken-jersey-bundle with 4 ( much smaller ) dependencies: jsr311-api, jersey-servlet, jersey-json, jersey-server
+                -->
                 <exclusion>
                     <groupId>com.sun.jersey</groupId>
                     <artifactId>jersey-bundle</artifactId>
@@ -155,6 +157,13 @@
             <artifactId>apache-log4j-extras</artifactId>
             <version>${apache-log4j-extras}</version>
         </dependency>
+
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+
 
 
         <!-- commons-configuration is used by HadoopConfigurationBootstrap -->
@@ -255,19 +264,50 @@
             <version>1.7.1</version>
         </dependency>
 
-        <!-- vfs (core) kettle step -->
+        <!-- vfs2 (core) kettle step -->
         <dependency>
             <groupId>commons-httpclient</groupId>
             <artifactId>commons-httpclient</artifactId>
             <version>3.1</version>
         </dependency>
 
-        <!-- vfs (core) kettle step -->
+        <!-- vfs2 (core) kettle step -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>2.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.jackrabbit</groupId>
+            <artifactId>jackrabbit-webdav</artifactId>
+            <version>1.6.5</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+
 
 
 

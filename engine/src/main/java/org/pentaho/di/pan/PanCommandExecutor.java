@@ -22,6 +22,9 @@
 
 package org.pentaho.di.pan;
 
+import org.apache.commons.codec.binary.Base64InputStream;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.pentaho.di.base.AbstractBaseCommandExecutor;
@@ -40,6 +43,7 @@ import org.pentaho.di.core.util.FileUtil;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.core.vfs.KettleVFS;
+import org.pentaho.di.engine.api.model.Transformation;
 import org.pentaho.di.repository.RepositoriesMeta;
 import org.pentaho.di.repository.Repository;
 import org.pentaho.di.repository.RepositoryDirectoryInterface;
@@ -52,11 +56,19 @@ import org.pentaho.di.trans.step.RowAdapter;
 import org.pentaho.di.trans.step.StepInterface;
 import org.w3c.dom.Document;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class PanCommandExecutor extends AbstractBaseCommandExecutor {
 
@@ -69,8 +81,10 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
     setLog( log );
   }
 
+  final String TMP_BASE_DIR = ".tmp";
+
   public Result execute( String repoName, String noRepo, String username, String trustUser, String password, String dirName,
-                         String filename, String jarFile, String transName, String listTrans, String listDirs, String exportRepo,
+                         String filename, String jarFile, String transName, String xml, String listTrans, String listDirs, String exportRepo,
                          String initialDir, String listRepos, String safemode, String metrics, String listParams, String resultSetStepName,
                          String resultSetCopyNumber, NamedParams params, String[] arguments ) throws Throwable {
 
@@ -94,7 +108,7 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
       logDebug( "Pan.Log.StartingToLookOptions" );
 
       // Read kettle transformation specified
-      if ( !Utils.isEmpty( repoName ) || !Utils.isEmpty( filename ) || !Utils.isEmpty( jarFile ) ) {
+      if ( !Utils.isEmpty( repoName ) || !Utils.isEmpty( filename ) || !Utils.isEmpty( jarFile ) || !Utils.isEmpty( xml ) ) {
 
         logDebug( "Pan.Log.ParsingCommandline" );
 
@@ -116,14 +130,13 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
 
           repository = establishRepositoryConnection( repositoryMeta, username, password, RepositoryOperation.EXECUTE_TRANSFORMATION );
 
-          trans = executeRepositoryBasedCommand( repository, repositoryMeta, dirName, transName, listTrans, listDirs, exportRepo );
+          trans = executeRepositoryBasedCommand( repository, repositoryMeta, dirName, transName, xml, listTrans, listDirs, exportRepo );
         }
-
 
         // Try to load the transformation from file, even if it failed to load from the repository
         // You could implement some fail-over mechanism this way.
         if ( trans == null ) {
-          trans = executeFilesystemBasedCommand( initialDir, filename, jarFile );
+          trans = executeFilesystemBasedCommand( initialDir, filename, jarFile, xml );
         }
 
       }
@@ -269,8 +282,8 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
     return CommandExecutorCodes.Pan.KETTLE_VERSION_PRINT.getCode();
   }
 
-  public Trans executeRepositoryBasedCommand( Repository repository, RepositoryMeta repositoryMeta, final String dirName,
-                                              final String transName, final String listTrans, final String listDirs, final String exportRepo ) throws Exception {
+  public Trans executeRepositoryBasedCommand( Repository repository, RepositoryMeta repositoryMeta, String dirName,
+                                              String transName, String xml, String listTrans, String listDirs, String exportRepo ) throws Exception {
 
     try {
 
@@ -300,6 +313,19 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
 
             logDebug( "Pan.Log.LoadTransInfo" );
             TransMeta transMeta = repository.loadTransformation( transName, directory, null, true, null );
+
+            logDebug( "Pan.Log.AllocateTrans" );
+            Trans trans = new Trans( transMeta );
+            trans.setRepository( repository );
+            trans.setMetaStore( getMetaStore() );
+
+            return trans; // return transformation loaded from the repo
+
+          // xml input is not empty ? then command it to load a transformation
+          } else if ( !Utils.isEmpty( xml )  ) {
+
+            logDebug( "Pan.Log.LoadTransInfo" );
+            TransMeta transMeta = new TransMeta( new ByteArrayInputStream( xml.getBytes() ), repository, true, null, null );
 
             logDebug( "Pan.Log.AllocateTrans" );
             Trans trans = new Trans( transMeta );
@@ -340,7 +366,7 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
     return null;
   }
 
-  public Trans executeFilesystemBasedCommand( final String initialDir, final String filename, final String jarFilename ) throws Exception {
+  public Trans executeFilesystemBasedCommand( String initialDir, String filename, String jarFilename, String xml ) throws Exception {
 
     Trans trans = null;
 
@@ -358,22 +384,20 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
       TransMeta transMeta = new TransMeta( filepath );
       trans = new Trans( transMeta );
 
-    }
-
-    if ( !Utils.isEmpty( jarFilename ) ) {
+    } else if ( !Utils.isEmpty( jarFilename ) ) {
 
       try {
 
         logDebug( "Pan.Log.LoadingTransJar", jarFilename );
 
         InputStream inputStream = PanCommandExecutor.class.getResourceAsStream( jarFilename );
-        StringBuilder xml = new StringBuilder();
+        StringBuilder sbXxml = new StringBuilder();
         int c;
         while ( ( c = inputStream.read() ) != -1 ) {
-          xml.append( (char) c );
+          sbXxml.append( (char) c );
         }
         inputStream.close();
-        Document document = XMLHandler.loadXMLString( xml.toString() );
+        Document document = XMLHandler.loadXMLString( sbXxml.toString() );
         TransMeta transMeta = new TransMeta( XMLHandler.getSubNode( document, "transformation" ), null );
         trans = new Trans( transMeta );
 
@@ -383,10 +407,87 @@ public class PanCommandExecutor extends AbstractBaseCommandExecutor {
         System.out.println( Const.getStackTracker( e ) );
         throw e;
       }
+    } else if ( !Utils.isEmpty( xml ) ) {
+
+      ObjectInputStream ois = null;
+      Base64InputStream b64is = null;
+      ByteArrayInputStream bis = null;
+
+
+      try {
+
+        // A) is it a Base64 representation of a serialized Trans object?
+
+        logDebug( "Pan.Log.LoadTransInfo" );
+        bis = new ByteArrayInputStream( xml.getBytes() );
+        b64is = new Base64InputStream( bis );
+        ois = new ObjectInputStream( b64is );
+
+        logDebug( "Pan.Log.AllocateTrans" );
+
+        Transformation t = (Transformation) ois.readObject();
+        handleTransformationGraphDeserialization( t );
+
+        logDebug( "Pan.Log.LoadingTransXML", "" + TMP_BASE_DIR + File.separator + t.getId() );
+        TransMeta transMeta = new TransMeta( TMP_BASE_DIR + File.separator + t.getId() );
+        trans = new Trans( transMeta );
+        trans.setMetaStore( getMetaStore() );
+
+      } catch ( Throwable t ) {
+
+        try {
+
+          // B) is it a string representation of the actual KTR xml?
+          logDebug( "Pan.Log.LoadTransInfo" );
+          bis = new ByteArrayInputStream( xml.getBytes() );
+          TransMeta transMeta = new TransMeta( bis, null, true, null, null );
+
+          logDebug( "Pan.Log.AllocateTrans" );
+          trans = new Trans( transMeta );
+          trans.setMetaStore( getMetaStore() );
+
+        } catch ( Throwable t1 ) {
+          System.out.println( BaseMessages.getString( getPkgClazz(), "Pan.Error.LoadingJobEntriesHaltPan" ) );
+        }
+
+      } finally {
+        IOUtils.closeQuietly( ois );
+        IOUtils.closeQuietly( b64is );
+        IOUtils.closeQuietly( bis );
+      }
     }
 
     return trans;
   }
+
+  protected void handleTransformationGraphDeserialization( final Transformation t ) throws IOException {
+
+    final String KNOWN_PREFIX = "file://";
+
+    final String TRANS_META = "TransMeta";
+    final String SUB_TRANS = "SubTransformations";
+
+    if ( t == null || StringUtils.isEmpty( t.getId() ) || t.getConfig( TRANS_META ) == null ) {
+      return; // exit; not much we can do here
+    }
+
+    String sanitizedKtrAbsPath = t.getId().startsWith( KNOWN_PREFIX ) ? t.getId().replaceFirst( KNOWN_PREFIX, StringUtils.EMPTY ) : t.getId();
+    String ktrAbsPath = TMP_BASE_DIR + File.separator + sanitizedKtrAbsPath;
+
+    Optional<? extends Serializable> subTrans = t.getConfig( SUB_TRANS );
+
+    // store current transformation object
+    FileUtils.writeByteArrayToFile( new File( ktrAbsPath ), t.getConfig( TRANS_META ).get().toString().getBytes( Charset.defaultCharset() ) );
+
+    if ( subTrans != null && subTrans.get() != null && !( (Map) subTrans.get() ).isEmpty() ) {
+
+      // recursively call for handleTransformationDeserialization() for each of the sub-transformations
+      for ( Map.Entry<String, Transformation> entry : ( (Map<String, Transformation>) subTrans.get() ).entrySet() ) {
+        handleTransformationGraphDeserialization( entry.getValue() );
+      }
+    }
+  }
+
 
   /**
    * Configures the transformation with the given parameters and their values

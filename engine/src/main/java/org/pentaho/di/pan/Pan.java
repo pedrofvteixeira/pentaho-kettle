@@ -71,7 +71,7 @@ public class Pan {
 
     // The options:
     StringBuilder optionRepname, optionUsername, optionTrustUser,  optionPassword, optionTransname, optionDirname;
-    StringBuilder optionFilename, optionLoglevel, optionLogfile, optionLogfileOld, optionListdir;
+    StringBuilder optionFilename, optionXml, optionLoglevel, optionLogfile, optionLogfileOld, optionListdir;
     StringBuilder optionListtrans, optionListrep, optionExprep, optionNorep, optionSafemode;
     StringBuilder optionVersion, optionJarFilename, optionListParam, optionMetrics, initialDir;
     StringBuilder optionResultSetStepName, optionResultSetCopyNumber;
@@ -105,6 +105,9 @@ public class Pan {
           new StringBuilder() ),
         new CommandLineOption(
           "file", BaseMessages.getString( PKG, "Pan.ComdLine.XMLTransFile" ), optionFilename =
+          new StringBuilder() ),
+        new CommandLineOption(
+          "xml", BaseMessages.getString( PKG, "Pan.ComdLine.XMLTransFile" ), optionXml =
           new StringBuilder() ),
         new CommandLineOption(
           "level", BaseMessages.getString( PKG, "Pan.ComdLine.LogLevel" ), optionLoglevel =
@@ -238,7 +241,7 @@ public class Pan {
 
       Result result = getCommandExecutor().execute( optionRepname.toString(), optionNorep.toString(), optionUsername.toString(),
               optionTrustUser.toString(), optionPassword.toString(), optionDirname.toString(), optionFilename.toString(), optionJarFilename.toString(),
-              optionTransname.toString(), optionListtrans.toString(), optionListdir.toString(), optionExprep.toString(),
+              optionTransname.toString(), optionXml.toString(), optionListtrans.toString(), optionListdir.toString(), optionExprep.toString(),
               initialDir.toString(), optionListrep.toString(), optionSafemode.toString(), optionMetrics.toString(),
               optionListParam.toString(), optionResultSetStepName.toString(), optionResultSetCopyNumber.toString(),
               optionParams, args.toArray( new String[ args.size() ] ) );
